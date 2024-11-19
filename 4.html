@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Compartido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .dashboard-container {
+            margin: auto;
+            width: 90%;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table thead th {
+            background-color: #007BFF;
+            color: #fff;
+            padding: 10px;
+        }
+        table tbody td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .filters, .buttons {
+            margin-bottom: 20px;
+        }
+        .filters label, .buttons button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Compartido</h1>
+    <div class="dashboard-container">
+        <div class="filters">
+            <label for="serial-filter">Nº de Serie:</label>
+            <input type="text" id="serial-filter" oninput="applyFilters()" placeholder="Buscar...">
+
+            <label for="model-filter">Modelo:</label>
+            <select id="model-filter" onchange="applyFilters()">
+                <option value="">Todos</option>
+                <option value="GH100">GH100</option>
+                <option value="Elite">Elite</option>
+                <option value="No RoHS">No RoHS</option>
+                <option value="RoHS">RoHS</option>
+            </select>
+
+            <label for="date-range">Rango de Fechas:</label>
+            <input type="date" id="start-date" onchange="applyFilters()">
+            <input type="date" id="end-date" onchange="applyFilters()">
+
+            <label for="repair-days-min">Días de Reparación (Mínimo):</label>
+            <input type="number" id="repair-days-min" onchange="applyFilters()" placeholder="Mínimo">
+
+            <label for="repair-days-max">Días de Reparación (Máximo):</label>
+            <input type="number" id="repair-days-max" onchange="applyFilters()" placeholder="Máximo">
+
+            <label for="technician-filter">Técnico:</label>
+            <select id="technician-filter" onchange="applyFilters()">
+                <option value="">Todos</option>
+                <option value="J.PONS">J.PONS</option>
+                <option value="ALEAN">ALEAN</option>
+                <option value="DANI">DANI</option>
+                <option value="JOAN">JOAN</option>
+                <option value="J.SANCHEZ">J.SANCHEZ</option>
+            </select>
+
+            <label for="comments-filter">Comentarios:</label>
+            <input type="text" id="comments-filter" oninput="applyFilters()" placeholder="Buscar palabra clave...">
+            <button onclick="restoreFilters()">Restaurar Filtros</button>
+        </div>
+
+        <table id="active-table">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Nº de Serie</th>
+                    <th>Modelo</th>
+                    <th>Fecha de Entrada</th>
+                    <th>Fecha de Salida</th>
+                    <th>Técnico</th>
+                    <th>Comentarios</th>
+                    <th>Días</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Los datos se cargarán aquí dinámicamente -->
+            </tbody>
+        </table>
+
+        <div class="buttons">
+            <button onclick="addRow()">Añadir Equipo</button>
+            <button onclick="calculateFilteredAverage()">Calcular Media Días</button>
+        </div>
+    </div>
+
+    <script>
+        // Inicialización
+        let rowCounter = 1;
+        const activeTable = document.getElementById("active-table").querySelector("tbody");
+
+        window.onload = () => {
+            loadData();
+        };
+
+        // Guardar datos en localStorage
+        function saveData() {
+            const tableData = Array.from(activeTable.children).map(row => ({
+                number: row.children[0].textContent,
+                serial: row.children[1].textContent,
+                model: row.children[2].textContent,
+                dateStart: row.children[3].querySelector("input")?.value || "",
+                dateEnd: row.children[4].querySelector("input")?.value || "",
+                technician: row.children[5].querySelector("select")?.value || "",
+                comments: row.children[6].textContent,
+                days: row.children[7].textContent
+            }));
+            localStorage.setItem("dashboardData", JSON.stringify(tableData));
+        }
+
+        // Cargar datos desde localStorage
+        function loadData() {
+            const data = JSON.parse(localStorage.getItem("dashboardData") || "[]");
+            data.forEach(item => addRow(item));
+        }
+
+        function addRow(data = {}) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${data.number || rowCounter++}</td>
+                <td contenteditable="true">${data.serial || ""}</td>
+                <td>${data.model || ""}</td>
+                <td><input type="date" value="${data.dateStart || ""}" onchange="calculateDays(this)"></td>
+                <td><input type="date" value="${data.dateEnd || ""}" onchange="calculateDays(this)"></td>
+                <td>
+                    <select>
+                        <option value="J.PONS" ${data.technician === "J.PONS" ? "selected" : ""}>J.PONS</option>
+                        <option value="ALEAN" ${data.technician === "ALEAN" ? "selected" : ""}>ALEAN</option>
+                        <option value="DANI" ${data.technician === "DANI" ? "selected" : ""}>DANI</option>
+                        <option value="JOAN" ${data.technician === "JOAN" ? "selected" : ""}>JOAN</option>
+                        <option value="J.SANCHEZ" ${data.technician === "J.SANCHEZ" ? "selected" : ""}>J.SANCHEZ</option>
+                    </select>
+                </td>
+                <td contenteditable="true">${data.comments || ""}</td>
+                <td>${data.days || ""}</td>
+                <td>
+                    <button onclick="deleteRow(this)">Eliminar</button>
+                </td>
+            `;
+            activeTable.appendChild(row);
+        }
+
+        function deleteRow(button) {
+            if (confirm("¿Deseas eliminar esta línea?")) {
+                button.parentElement.parentElement.remove();
+                saveData();
+            }
+        }
+
+        function calculateDays(input) {
+            const row = input.parentElement.parentElement;
+            const startDate = new Date(row.children[3].querySelector("input").value);
+            const endDate = new Date(row.children[4].querySelector("input").value);
+            const daysCell = row.children[7];
+
+            if (!isNaN(startDate) && !isNaN(endDate)) {
+                const diff = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+                daysCell.textContent = diff;
+            }
+            saveData();
+        }
+
+        function calculateFilteredAverage() {
+            const rows = Array.from(activeTable.children);
+            const totalDays = rows.reduce((sum, row) => {
+                const days = parseInt(row.children[7].textContent) || 0;
+                return sum + days;
+            }, 0);
+            alert(`Media de días: ${(totalDays / rows.length).toFixed(2) || 0}`);
+        }
+
+        function applyFilters() {
+            // Aquí se puede implementar lógica de filtros.
+        }
+
+        function restoreFilters() {
+            // Restaurar filtros y mostrar todas las filas.
+        }
+    </script>
+</body>
+</html>
